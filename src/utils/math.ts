@@ -9,14 +9,14 @@
 // 0x51: Acceleration -> [0x55, 0x51, AxL, AxH, AyL, AyH, AzL, AzH, TL, TH, SUM]
 // 0x59: Quaternion -> [0x55, 0x59, q0L, q0H, q1L, q1H, q2L, q2H, q3L, q3H, SUM]
 
-export function parseAcceleration(buffer: Uint8Array): { x: number; y: number; z: number } | null {
+export function parseAcceleration(buffer: Uint8Array, gRange: number = 16): { x: number; y: number; z: number } | null {
     if (buffer.length < 11 || buffer[0] !== 0x55 || buffer[1] !== 0x51) return null;
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
-    // Resolution: 16g / 32768, Output in g
-    const x = (view.getInt16(2, true) / 32768) * 16 * 9.81;
-    const y = (view.getInt16(4, true) / 32768) * 16 * 9.81;
-    const z = (view.getInt16(6, true) / 32768) * 16 * 9.81;
+    // Resolution: Range / 32768, Output in g
+    const x = (view.getInt16(2, true) / 32768) * gRange * 9.81;
+    const y = (view.getInt16(4, true) / 32768) * gRange * 9.81;
+    const z = (view.getInt16(6, true) / 32768) * gRange * 9.81;
     return { x, y, z };
 }
 

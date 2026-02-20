@@ -33,7 +33,9 @@ export function useBluetooth() {
                 const q = parseQuaternion(buffer);
                 if (q) latestQuatRef.current = q;
             } else if (buffer[1] === 0x51) {
-                const a = parseAcceleration(buffer);
+                // Many WitMotion standard mobile firmwares are locked to 2g or 16g out of the box
+                // Set gRange=2 as fallback
+                const a = parseAcceleration(buffer, 2);
                 if (a) {
                     setAccelerationZ(a.z);
                     // Math pipeline integration
