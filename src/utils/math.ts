@@ -40,21 +40,21 @@ export function getLinearAccelerationBaseZ(rawAccel: { x: number, y: number, z: 
 }
 
 // 3. Digital IIR Filter (Butterworth 4th Order Low-Pass)
-// Pre-calculated coefficients for 200Hz Sample Rate, 10Hz Cutoff
+// Pre-calculated coefficients for 20Hz Sample Rate, 5Hz Cutoff (Nyquist = 10Hz)
 export class ButterworthLowPass {
     private xv = [0, 0, 0, 0, 0];
     private yv = [0, 0, 0, 0, 0];
 
     public filter(val: number): number {
-        // Coefficients derived from SciPy/IIRJ for 4th order, 10Hz cutoff at 200Hz Fs
+        // Coefficients for 4th order Butterworth, Fs=20Hz, Fc=5Hz
         this.xv[0] = this.xv[1]; this.xv[1] = this.xv[2]; this.xv[2] = this.xv[3]; this.xv[3] = this.xv[4];
-        this.xv[4] = val / 1445.41; // GAIN
+        this.xv[4] = val / 3.4142; // GAIN
 
         this.yv[0] = this.yv[1]; this.yv[1] = this.yv[2]; this.yv[2] = this.yv[3]; this.yv[3] = this.yv[4];
 
         this.yv[4] = (this.xv[0] + this.xv[4]) + 4 * (this.xv[1] + this.xv[3]) + 6 * this.xv[2]
-            + (-0.4078516104 * this.yv[0]) + (1.9839443216 * this.yv[1])
-            + (-3.6705606670 * this.yv[2]) + (3.0858167732 * this.yv[3]);
+            + (-0.0000000000 * this.yv[0]) + (0.0000000000 * this.yv[1])
+            + (-0.1715728753 * this.yv[2]) + (0.0000000000 * this.yv[3]);
 
         return this.yv[4];
     }
@@ -64,12 +64,12 @@ export class ButterworthLowPass {
 export class VelocityIntegrator {
     private currentVelocity = 0;
     private prevAccel = 0;
-    private dt = 0.005; // 5ms for 200Hz
+    private dt = 0.050; // 50ms step for 20Hz sampling rate
     private filter = new ButterworthLowPass();
 
     private zuptThreshold = 0.15; // m/s^2 
     private zuptCounter = 0;
-    private zuptMaxFrames = 40; // 0.2 seconds * 200Hz
+    private zuptMaxFrames = 4; // 0.2 seconds * 20Hz
 
     public update(rawZ: number, q: { q0: number, q1: number, q2: number, q3: number }): number {
         // 1. Compensate gravity
