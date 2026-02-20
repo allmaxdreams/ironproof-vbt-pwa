@@ -2,9 +2,9 @@ import { useState, useCallback, useRef } from 'react';
 import { parseAcceleration, parseQuaternion, VelocityIntegrator } from '../utils/math';
 
 // WitMotion BLE UUIDs (Standard WT9011DCL)
-// Web Bluetooth accepts 16-bit UUIDs as numbers, e.g. 0xffe5
-const WITMOTION_SERVICE_UUID = 0xffe5; // Full: 0000ffe5-0000-1000-8000-00805f9b34fb
-const WITMOTION_CHAR_UUID = 0xffe4;    // Full: 0000ffe4-0000-1000-8000-00805f9b34fb
+// Some firmwares like WT901BLE67 require the full 128-bit UUID string in Web Bluetooth
+const WITMOTION_SERVICE_UUID = '0000ffe5-0000-1000-8000-00805f9b34fb';
+const WITMOTION_CHAR_UUID = '0000ffe4-0000-1000-8000-00805f9b34fb';
 
 export function useBluetooth() {
     const [isConnected, setIsConnected] = useState(false);
