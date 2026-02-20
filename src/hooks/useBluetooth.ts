@@ -1,10 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { parseAcceleration, parseQuaternion, VelocityIntegrator } from '../utils/math';
 
-// WitMotion BLE UUIDs (Standard WT9011DCL)
-// Some firmwares like WT901BLE67 require the full 128-bit UUID string in Web Bluetooth
-const WITMOTION_SERVICE_UUID = '0000ffe5-0000-1000-8000-00805f9b34fb';
-const WITMOTION_CHAR_UUID = '0000ffe4-0000-1000-8000-00805f9b34fb';
+// WitMotion BLE UUIDs are dynamically discovered because WT901BLE67 uses different variants
+// 0xffe5 (Standard WitMotion), 0xffe0 (Standard BLE Serial), etc.
 
 export function useBluetooth() {
     const [isConnected, setIsConnected] = useState(false);
@@ -65,9 +63,15 @@ export function useBluetooth() {
         setError(null);
 
         try {
+            // Requesting all known WitMotion and standard serial BLE service UUIDs
             const device = await navigator.bluetooth.requestDevice({
                 filters: [{ namePrefix: 'WT' }],
-                optionalServices: [WITMOTION_SERVICE_UUID]
+                optionalServices: [
+                    0xffe5, // Standard WitMotion
+                    0xffe0, // Standard BLE Serial (often used by WT901BLE67)
+                    0xffa0, // Alternative WitMotion
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455' // Transparent UART
+                ]
             });
 
             deviceRef.current = device;
@@ -76,15 +80,36 @@ export function useBluetooth() {
             if (!device.gatt) throw new Error('No GATT server found');
 
             const server = await device.gatt.connect();
-            const service = await server.getPrimaryService(WITMOTION_SERVICE_UUID);
-            const characteristic = await service.getCharacteristic(WITMOTION_CHAR_UUID);
 
-            characteristicRef.current = characteristic;
-            characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicValueChanged);
-            await characteristic.startNotifications();
+            // Dynamically find the right service and characteristic
+            const services = await server.getPrimaryServices();
+            let targetChar: BluetoothRemoteGATTCharacteristic | null = null;
+
+            for (const service of services) {
+                console.log(`Checking Service: ${service.uuid}`);
+                const characteristics = await service.getCharacteristics();
+                for (const char of characteristics) {
+                    console.log(`  Checking Characteristic: ${char.uuid}`);
+                    if (char.properties.notify) {
+                        targetChar = char;
+                        console.log(`    -> Selected! (Supports Notify)`);
+                        break;
+                    }
+                }
+                if (targetChar) break;
+            }
+
+            if (!targetChar) {
+                throw new Error('No compatible notifying characteristic found on device.');
+            }
+
+            characteristicRef.current = targetChar;
+            targetChar.addEventListener('characteristicvaluechanged', handleCharacteristicValueChanged);
+            await targetChar.startNotifications();
 
             setIsConnected(true);
         } catch (err: any) {
+            console.error('Connection error:', err);
             setError(err.message || 'Failed to connect to sensor');
         } finally {
             setIsConnecting(false);
