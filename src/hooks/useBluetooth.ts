@@ -64,9 +64,11 @@ export function useBluetooth() {
 
         try {
             // Requesting all known WitMotion and standard serial BLE service UUIDs
+            // Explicitly including the 128-bit string for ffe5 to bypass Android cache bugs
             const device = await navigator.bluetooth.requestDevice({
                 filters: [{ namePrefix: 'WT' }],
                 optionalServices: [
+                    '0000ffe5-0000-1000-8000-00805f9b34fb', // Explicit 128-bit Android
                     0xffe5, // Standard WitMotion
                     0xffe0, // Standard BLE Serial (often used by WT901BLE67)
                     0xffa0, // Alternative WitMotion
@@ -80,6 +82,10 @@ export function useBluetooth() {
             if (!device.gatt) throw new Error('No GATT server found');
 
             const server = await device.gatt.connect();
+
+            // MANDATORY DELAY FOR ANDROID
+            // Android often claims connection is established before services are fully discovered.
+            await new Promise(resolve => setTimeout(resolve, 600));
 
             // Dynamically find the right service and characteristic
             const services = await server.getPrimaryServices();
